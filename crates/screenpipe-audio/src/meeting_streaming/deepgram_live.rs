@@ -426,7 +426,7 @@ fn handle_results_event(
                     device_name,
                     device_type,
                     turn_item_id,
-                    Some(format!("speaker {}", turn.speaker + 1)),
+                    Some(turn_speaker_display_name(device_type, turn.speaker)),
                     turn.transcript,
                     turn.start_secs
                         .map(|start| result_capture_time(stream_clock, Some(start)))
@@ -488,6 +488,13 @@ struct DeepgramSpeakerTurn {
     speaker: i64,
     transcript: String,
     start_secs: Option<f64>,
+}
+fn turn_speaker_display_name(device_type: &str, speaker: i64) -> String {
+    if device_type.eq_ignore_ascii_case("input") {
+        "You".to_string()
+    } else {
+        format!("speaker {}", speaker + 1)
+    }
 }
 
 /// Preserve Deepgram's consecutive per-word speaker runs instead of assigning
@@ -771,6 +778,15 @@ mod tests {
         );
     }
 
+    #[test]
+    fn microphone_turns_are_labeled_you_not_speaker_1() {
+        assert_eq!(turn_speaker_display_name("input", 0), "You");
+        assert_eq!(turn_speaker_display_name("input", 2), "You");
+        assert_eq!(turn_speaker_display_name("INPUT", 0), "You");
+        assert_eq!(turn_speaker_display_name("output", 0), "speaker 1");
+        assert_eq!(turn_speaker_display_name("output", 2), "speaker 3");
+    }
+    
     #[test]
     fn incomplete_diarization_falls_back_without_dropping_words() {
         let payload = json!({
